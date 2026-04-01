@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>營養追蹤器 v3.2</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+      padding: 16px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    /* 頁面容器 */
+    .page {
+      display: none;
+    }
+    
+    .page.active {
+      display: block;
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    h1 {
+      font-size: 24px;
+      color: #333;
+    }
+    
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .header-btn {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    
+    .back-btn {
+      background: #007AFF;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    
+    /* 進度區 */
+    .progress-section {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .week-select {
+      margin-bottom: 16px;
+    }
+    
+    select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: white;
+    }
+    
+    .remaining {
+      font-size: 22px;
+      font-weight: bold;
+      color: #007AFF;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .progress-item {
+      margin-bottom: 12px;
+    }
+    
+    .progress-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .progress-bar {
+      height: 20px;
+      background: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4CAF50, #81C784);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 8px;
+      color: white;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    .progress-fill.over {
+      background: linear-gradient(90deg, #f44336, #e57373);
+    }
+    
+    /* 餐欄區域 */
+    .meals-section {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .meals-section h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    
+    .meals-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    
+    .meal-column {
+      background: #f8f9fa;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 180px;
+    }
+    
+    .meal-column.drag-over {
+      background: #e3f2fd;
+      border-color: #007AFF;
+    }
+    
+    .meal-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    
+    .meal-items {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    /* 食物卡片 */
+    .food-card {
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+    
+    .food-card.dragging {
+      opacity: 0.5;
+    }
+    
+    .food-info {
+      flex: 1;
+    }
+    
+    .food-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .food-calories {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .remove-btn {
+      background: #ff3b30;
+      color: white;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* 桌面版顯示刪除按鈕 */
+    @media (min-width: 769px) {
+      .food-card {
+        cursor: grab;
+      }
+      
+      .food-card:active {
+        cursor: grabbing;
+      }
+      
+      .remove-btn {
+        display: flex;
+      }
+    }
+    
+    /* 食物庫區域 */
+    .food-library-section {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .food-library-section h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    
+    /* 分類 */
+    .category {
+      margin-bottom: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .category-header {
+      background: #f8f9fa;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+    
+    .category-header:hover {
+      background: #e9ecef;
+    }
+    
+    .category-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .category-icon {
+      font-size: 18px;
+      margin-right: 8px;
+    }
+    
+    .category-toggle {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .category-content {
+      padding: 12px;
+      display: none;
+    }
+    
+    .category.expanded .category-content {
+      display: block;
+    }
+    
+    .category.expanded .category-toggle::before {
+      content: "▲";
+    }
+    
+    .category:not(.expanded) .category-toggle::before {
+      content: "▼";
+    }
+    
+    .food-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    
+    /* 食物標籤 - 分類色 */
+    .food-tag {
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+      color: white;
+      transition: transform 0.1s;
+    }
+    
+    .food-tag:active {
+      transform: scale(0.95);
+    }
+    
+    .food-tag.dragging {
+      opacity: 0.5;
+    }
+    
+    .food-tag.hidden {
+      display: none;
+    }
+    
+    /* 分類顏色 */
+    .food-tag.cat-主食 { background: #FF9800; }
+    .food-tag.cat-蛋白質 { background: #F44336; }
+    .food-tag.cat-蔬菜 { background: #4CAF50; }
+    .food-tag.cat-水果 { background: #E91E63; }
+    .food-tag.cat-堅果種子 { background: #795548; }
+    .food-tag.cat-湯品飲品 { background: #2196F3; }
+    
+    .food-tag-name {
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    
+    .food-tag-calories {
+      font-size: 11px;
+      opacity: 0.9;
+    }
+    
+    /* 底部選單 */
+    .bottom-sheet-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: none;
+      animation: fadeIn 0.2s;
+    }
+    
+    .bottom-sheet-overlay.show {
+      display: block;
+    }
+    
+    .bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-radius: 16px 16px 0 0;
+      z-index: 1001;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .bottom-sheet.show {
+      transform: translateY(0);
+    }
+    
+    .bottom-sheet-header {
+      padding: 16px;
+      border-bottom: 1px solid #e0e0e0;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+    }
+    
+    .bottom-sheet-options {
+      padding: 8px 0;
+    }
+    
+    .bottom-sheet-option {
+      padding: 16px 20px;
+      border: none;
+      background: white;
+      width: 100%;
+      text-align: center;
+      font-size: 16px;
+      color: #007AFF;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .bottom-sheet-option:active {
+      background: #f8f9fa;
+    }
+    
+    .bottom-sheet-option.cancel {
+      color: #666;
+      font-weight: 600;
+      border-bottom: none;
+    }
+    
+    .bottom-sheet-option.delete {
+      color: #ff3b30;
+    }
+    
+    /* 設定頁樣式 */
+    .section {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .section h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    
+    .section p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+    
+    .format-example {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      color: #495057;
+      overflow-x: auto;
+      white-space: nowrap;
+      margin-bottom: 12px;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      font-size: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      resize: vertical;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    
+    .btn-primary { background: #007AFF; color: white; }
+    .btn-success { background: #34C759; color: white; }
+    .btn-danger { background: #FF3B30; color: white; }
+    
+    .preview-section {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: none;
+    }
+    
+    .preview-section.show { display: block; }
+    
+    .preview-section h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow-x: auto;
+      display: block;
+    }
+    
+    .preview-table th,
+    .preview-table td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    
+    .preview-table th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+    
+    .error-message, .success-message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .error-message {
+      background: #FFE5E5;
+      color: #D32F2F;
+    }
+    
+    .success-message {
+      background: #E8F5E9;
+      color: #2E7D32;
+    }
+    
+    .error-message.show, .success-message.show {
+      display: block;
+    }
+    
+    .empty-state {
+      text-align: center;
+      color: #999;
+      padding: 40px 20px;
+    }
+    
+    /* 手機版 */
+    @media (max-width: 768px) {
+      .meals-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .food-items {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 主頁面 -->
+  <div id="mainPage" class="page active">
+    <div class="header">
+      <h1>🥗 營養追蹤器</h1>
+      <div class="header-buttons">
+        <button class="header-btn" onclick="showPage('planPage')">設定計畫</button>
+        <button class="header-btn" onclick="showPage('foodPage')">食物資訊</button>
+      </div>
+    </div>
+    
+    <!-- 進度區 -->
+    <div class="progress-section">
+      <div class="week-select">
+        <select id="weekSelect" onchange="updateWeek()">
+          <option value="">請先設定計畫</option>
+        </select>
+      </div>
+      
+      <div class="remaining" id="remainingCalories">剩餘：2000 kcal</div>
+      
+      <div id="progressBars"></div>
+    </div>
+    
+    <!-- 餐欄區域 -->
+    <div class="meals-section">
+      <h2>📅 今日餐點</h2>
+      <div class="meals-grid">
+        <div class="meal-column" data-meal="1">
+          <div class="meal-title">第一餐</div>
+          <div class="meal-items" id="meal1"></div>
+        </div>
+        
+        <div class="meal-column" data-meal="2">
+          <div class="meal-title">第二餐</div>
+          <div class="meal-items" id="meal2"></div>
+        </div>
+        
+        <div class="meal-column" data-meal="3">
+          <div class="meal-title">第三餐</div>
+          <div class="meal-items" id="meal3"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 食物庫區域 -->
+    <div class="food-library-section">
+      <h2>🍱 食物庫</h2>
+      <div id="foodLibraryContainer"></div>
+    </div>
+  </div>
+  
+  <!-- 計畫設定頁 -->
+  <div id="planPage" class="page">
+    <div class="header">
+      <h1>📋 設定計畫</h1>
+      <button class="back-btn" onclick="showPage('mainPage')">返回</button>
+    </div>
+    
+    <div class="section">
+      <h2>匯入週計畫</h2>
+      <p>請依照以下格式貼上 CSV 資料（每行一週）：</p>
+      <div class="format-example">週數,熱量,蛋白質,脂肪,碳水,纖維,鈉,糖,飽和脂肪</div>
+      
+      <div class="error-message" id="planError"></div>
+      <div class="success-message" id="planSuccess"></div>
+      
+      <textarea id="planInput" placeholder="範例：
+1,2000,150,60,200,25,2000,50,20
+2,1800,140,55,180,25,1900,45,18"></textarea>
+      
+      <button class="btn btn-success" onclick="savePlanDirect()" style="width: 100%; margin-top: 12px;">儲存計畫</button>
+    </div>
+  </div>
+  
+  <!-- 食物庫設定頁 -->
+  <div id="foodPage" class="page">
+    <div class="header">
+      <h1>🍱 食物資訊</h1>
+      <button class="back-btn" onclick="showPage('mainPage')">返回</button>
+    </div>
+    
+    <div class="section">
+      <h2>匯入食物庫</h2>
+      <p>請依照以下格式貼上 CSV 資料（每行一項食物）：</p>
+      <div class="format-example">分類,名稱,烹煮方式,熱量,蛋白質,脂肪,碳水,纖維,鈉,糖,飽和脂肪</div>
+      <p style="font-size: 13px; color: #999;">分類：主食、蛋白質、蔬菜、水果、堅果種子、湯品飲品</p>
+      
+      <div class="error-message" id="foodError"></div>
+      <div class="success-message" id="foodSuccess"></div>
+      
+      <textarea id="foodInput" placeholder="範例：
+主食,糙米飯,蒸煮,111,2.6,0.9,23,1.8,5,0.4,0.2
+蛋白質,雞胸肉,水煮,165,31,3.6,0,0,74,0,1
+蔬菜,花椰菜,清蒸,34,2.8,0.4,7,2.6,30,1.7,0"></textarea>
+      
+      <button class="btn btn-success" onclick="saveFoodDirect()" style="width: 100%; margin-top: 12px;">儲存食物庫</button>
+    </div>
+  </div>
+  
+  <!-- 底部選單 -->
+  <div class="bottom-sheet-overlay" id="bottomSheetOverlay" onclick="hideBottomSheet()"></div>
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="bottom-sheet-header" id="bottomSheetHeader"></div>
+    <div class="bottom-sheet-options" id="bottomSheetOptions"></div>
+  </div>
+
+  <script>
+    // Version: v3.2 - Issac - 2026-03-30
+    // localStorage 版本（相容本地瀏覽器測試）
+    // 修改：使用 localStorage 取代 window.storage
+    
+    const isMobile = window.innerWidth <= 768;
+    let currentWeek = 1;
+    let todayMeals = { meal1: [], meal2: [], meal3: [] };
+    let foodLibrary = [];
+    let nutritionPlan = [];
+    let parsedPlanData = null;
+    let parsedFoodData = null;
+    let selectedFood = null;
+    let selectedMealFood = null;
+    
+    const CATEGORIES = {
+      '主食': { icon: '🍚', color: 'FF9800' },
+      '蛋白質': { icon: '🥩', color: 'F44336' },
+      '蔬菜': { icon: '🥬', color: '4CAF50' },
+      '水果': { icon: '🍎', color: 'E91E63' },
+      '堅果種子': { icon: '🌰', color: '795548' },
+      '湯品飲品': { icon: '🥤', color: '2196F3' }
+    };
+    
+    // ==================== 頁面切換 ====================
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      
+      if (pageId === 'mainPage') {
+        init();
+      }
+    }
+    
+    // ==================== 初始化 ====================
+    async function init() {
+      await initDefaultData();
+      await loadNutritionPlan();
+      await loadFoodLibrary();
+      await loadTodayMeals();
+      renderFoodLibrary();
+      updateDisplay();
+      setupDragDrop();
+    }
+    
+    // 首次開啟寫入內建資料
+    async function initDefaultData() {
+      // 檢查計畫是否存在
+      try {
+        const planData = localStorage.getItem('nutrition-plan');
+        if (!planData) {
+          // 寫入內建計畫
+          const defaultPlan = [
+            {week:1,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:2,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:3,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:4,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:5,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:6,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:7,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:8,calories:2100,protein:150,fat:85,carbs:185,fiber:35,sodium:2400,sugar:25,satFat:16},
+            {week:9,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:10,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:11,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:12,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:13,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:14,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:15,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:16,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:17,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:18,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:19,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:20,calories:1900,protein:150,fat:70,carbs:150,fiber:35,sodium:2400,sugar:20,satFat:14},
+            {week:21,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:22,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:23,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:24,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:25,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:26,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:27,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:28,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:29,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12},
+            {week:30,calories:1700,protein:145,fat:65,carbs:120,fiber:35,sodium:2400,sugar:15,satFat:12}
+          ];
+          localStorage.setItem('nutrition-plan', JSON.stringify(defaultPlan));
+          console.log('✓ 已載入內建計畫（30週）');
+        }
+      } catch (err) {
+        console.log('計畫初始化檢查');
+      }
+      
+      // 檢查食物庫是否存在
+      try {
+        const foodData = localStorage.getItem('food-library');
+        if (!foodData) {
+          // 寫入內建食物庫
+          const defaultFoods = [
+            {category:"主食",name:"糙米飯",method:"煮飯",calories:165,protein:3.75,fat:1.5,carbs:34.5,fiber:3.0,sodium:7.5,sugar:0.45,satFat:0.3},
+            {category:"主食",name:"地瓜",method:"蒸煮",calories:129,protein:2.4,fat:0.15,carbs:30.0,fiber:4.5,sodium:45,sugar:6.3,satFat:0.0},
+            {category:"主食",name:"燕麥粥",method:"煮粥",calories:106.5,protein:3.75,fat:2.25,carbs:18.0,fiber:2.55,sodium:3,sugar:0.0,satFat:0.45},
+            {category:"主食",name:"薏仁湯",method:"煮湯",calories:165,protein:5.7,fat:0.75,carbs:34.5,fiber:5.25,sodium:7.5,sugar:1.5,satFat:0.15},
+            {category:"主食",name:"黑米飯",method:"煮飯",calories:157.5,protein:4.2,fat:1.8,carbs:33.0,fiber:3.75,sodium:4.5,sugar:0.75,satFat:0.3},
+            {category:"主食",name:"玉米",method:"水煮",calories:129,protein:4.8,fat:1.8,carbs:28.5,fiber:4.2,sodium:1.5,sugar:4.8,satFat:0.3},
+            {category:"主食",name:"南瓜",method:"蒸煮",calories:39,protein:1.5,fat:0.15,carbs:9.75,fiber:2.25,sodium:1.5,sugar:4.2,satFat:0.0},
+            {category:"主食",name:"芋頭",method:"蒸煮",calories:168,protein:2.25,fat:0.3,carbs:39.0,fiber:3.0,sodium:3,sugar:1.5,satFat:0.0},
+            {category:"主食",name:"紅豆湯",method:"煮湯",calories:157.5,protein:10.5,fat:0.6,carbs:28.5,fiber:11.25,sodium:7.5,sugar:2.25,satFat:0.15},
+            {category:"主食",name:"綠豆湯",method:"煮湯",calories:157.5,protein:10.5,fat:0.6,carbs:28.5,fiber:11.25,sodium:7.5,sugar:2.25,satFat:0.15},
+            {category:"主食",name:"小米粥",method:"煮粥",calories:165,protein:5.25,fat:1.5,carbs:33.0,fiber:2.25,sodium:3,sugar:0.75,satFat:0.3},
+            {category:"主食",name:"五穀飯",method:"煮飯",calories:165,protein:4.5,fat:1.5,carbs:33.0,fiber:3.75,sodium:6,sugar:0.75,satFat:0.3},
+            {category:"主食",name:"冬粉",method:"水煮",calories:120,protein:0.3,fat:0.15,carbs:29.25,fiber:0.75,sodium:15,sugar:0.0,satFat:0.0},
+            {category:"主食",name:"蓮藕",method:"蒸煮",calories:111,protein:2.7,fat:0.15,carbs:25.8,fiber:4.5,sodium:30,sugar:2.25,satFat:0.0},
+            {category:"主食",name:"素乾麵",method:"清炒",calories:180,protein:6.0,fat:3.0,carbs:36.0,fiber:2.0,sodium:450,sugar:1.5,satFat:0.6},
+            {category:"主食",name:"素炒麵",method:"清炒",calories:195,protein:5.5,fat:4.5,carbs:37.5,fiber:2.5,sodium:480,sugar:2.0,satFat:0.8},
+            {category:"主食",name:"素米粉",method:"清炒",calories:180,protein:4.0,fat:3.0,carbs:36.0,fiber:2.0,sodium:420,sugar:1.8,satFat:0.6},
+            {category:"主食",name:"素冬粉炒",method:"清炒",calories:165,protein:3.0,fat:2.5,carbs:33.0,fiber:1.5,sodium:400,sugar:1.2,satFat:0.5},
+            {category:"主食",name:"紫米飯",method:"煮飯",calories:162,protein:3.9,fat:1.65,carbs:33.75,fiber:3.3,sodium:6,sugar:0.6,satFat:0.3},
+            {category:"主食",name:"地瓜飯",method:"煮飯",calories:150,protein:3.0,fat:0.3,carbs:33.0,fiber:4.5,sodium:40,sugar:6.0,satFat:0.0},
+            {category:"主食",name:"芋頭飯",method:"煮飯",calories:165,protein:3.0,fat:0.45,carbs:36.0,fiber:3.0,sodium:35,sugar:2.0,satFat:0.0},
+            {category:"主食",name:"玉米飯",method:"煮飯",calories:150,protein:4.5,fat:2.0,carbs:30.0,fiber:3.75,sodium:20,sugar:4.5,satFat:0.3},
+            {category:"主食",name:"冬粉飯",method:"煮飯",calories:135,protein:2.0,fat:1.5,carbs:30.0,fiber:1.5,sodium:300,sugar:0.5,satFat:0.3},
+            {category:"主食",name:"素炒飯(糙米)",method:"清炒",calories:180,protein:5.0,fat:3.0,carbs:33.0,fiber:3.0,sodium:380,sugar:1.5,satFat:0.5},
+            {category:"蛋白質",name:"豆腐",method:"水煮",calories:105,protein:12.0,fat:6.0,carbs:3.0,fiber:1.5,sodium:7.5,sugar:0.75,satFat:0.75},
+            {category:"蛋白質",name:"豆乾",method:"清炒",calories:210,protein:27.0,fat:12.0,carbs:7.5,fiber:3.75,sodium:375,sugar:1.5,satFat:1.8},
+            {category:"蛋白質",name:"五香豆干",method:"滷",calories:240,protein:24.0,fat:13.5,carbs:9.0,fiber:4.2,sodium:420,sugar:1.8,satFat:1.95},
+            {category:"蛋白質",name:"素雞",method:"滷",calories:225,protein:30.0,fat:9.0,carbs:12.0,fiber:4.5,sodium:450,sugar:1.5,satFat:1.5},
+            {category:"蛋白質",name:"豆包",method:"滷",calories:270,protein:22.5,fat:15.0,carbs:15.0,fiber:6.0,sodium:300,sugar:3.0,satFat:2.25},
+            {category:"蛋白質",name:"嫩豆腐",method:"水煮",calories:82.5,protein:9.0,fat:4.5,carbs:3.75,fiber:1.2,sodium:6,sugar:0.6,satFat:0.6},
+            {category:"蛋白質",name:"凍豆腐",method:"煮湯",calories:120,protein:12.75,fat:6.75,carbs:4.5,fiber:1.8,sodium:15,sugar:0.9,satFat:0.9},
+            {category:"蛋白質",name:"黃豆芽",method:"清炒",calories:45,protein:4.5,fat:0.3,carbs:8.25,fiber:2.7,sodium:15,sugar:3.0,satFat:0.15},
+            {category:"蛋白質",name:"素火腿",method:"清炒",calories:217.5,protein:27.0,fat:10.5,carbs:10.5,fiber:3.75,sodium:480,sugar:1.5,satFat:1.65},
+            {category:"蛋白質",name:"豆皮",method:"清炒",calories:225,protein:21.0,fat:12.0,carbs:9.0,fiber:4.5,sodium:360,sugar:1.2,satFat:1.8},
+            {category:"蛋白質",name:"素排",method:"滷",calories:240,protein:28.5,fat:10.5,carbs:12.0,fiber:4.2,sodium:420,sugar:1.5,satFat:1.5},
+            {category:"蛋白質",name:"毛豆",method:"水煮",calories:180,protein:15.0,fat:7.5,carbs:12.0,fiber:6.0,sodium:15,sugar:2.25,satFat:1.2},
+            {category:"蛋白質",name:"黑豆",method:"水煮",calories:195,protein:13.5,fat:1.5,carbs:34.5,fiber:9.0,sodium:7.5,sugar:1.5,satFat:0.3},
+            {category:"蛋白質",name:"無糖豆漿",method:"煮",calories:52.5,protein:5.25,fat:3.0,carbs:3.0,fiber:0.75,sodium:7.5,sugar:0.75,satFat:0.45},
+            {category:"蛋白質",name:"杏鮑菇",method:"清炒",calories:52.5,protein:4.5,fat:0.6,carbs:9.75,fiber:3.6,sodium:12,sugar:1.8,satFat:0.15},
+            {category:"蛋白質",name:"香菇",method:"清炒",calories:52.5,protein:5.25,fat:0.75,carbs:10.5,fiber:3.75,sodium:7.5,sugar:2.25,satFat:0.15},
+            {category:"蛋白質",name:"猴頭菇",method:"清炒",calories:45,protein:6.0,fat:0.45,carbs:7.5,fiber:4.5,sodium:15,sugar:1.5,satFat:0.15},
+            {category:"蛋白質",name:"木耳",method:"清炒",calories:37.5,protein:2.25,fat:0.3,carbs:9.0,fiber:8.25,sodium:15,sugar:0.75,satFat:0.15},
+            {category:"蛋白質",name:"滷豆干",method:"滷",calories:225,protein:25.5,fat:12.0,carbs:8.0,fiber:3.5,sodium:400,sugar:1.5,satFat:1.7},
+            {category:"蛋白質",name:"滷素雞",method:"滷",calories:210,protein:28.0,fat:8.5,carbs:10.5,fiber:4.0,sodium:420,sugar:1.2,satFat:1.4},
+            {category:"蔬菜",name:"菠菜",method:"水煮",calories:34.5,protein:4.35,fat:0.6,carbs:5.4,fiber:3.3,sodium:118.5,sugar:0.6,satFat:0.15},
+            {category:"蔬菜",name:"空心菜",method:"清炒",calories:37.5,protein:3.75,fat:0.45,carbs:6.0,fiber:3.0,sodium:90,sugar:0.75,satFat:0.15},
+            {category:"蔬菜",name:"地瓜葉",method:"水煮",calories:42,protein:4.5,fat:0.75,carbs:6.75,fiber:4.2,sodium:30,sugar:1.2,satFat:0.15},
+            {category:"蔬菜",name:"花椰菜",method:"水煮",calories:34.5,protein:2.7,fat:0.6,carbs:6.6,fiber:3.15,sodium:28.5,sugar:2.55,satFat:0.15},
+            {category:"蔬菜",name:"高麗菜",method:"清炒",calories:37.5,protein:2.25,fat:0.45,carbs:7.5,fiber:3.75,sodium:22.5,sugar:3.0,satFat:0.15},
+            {category:"蔬菜",name:"苦瓜",method:"清炒",calories:30,protein:1.5,fat:0.3,carbs:6.0,fiber:3.0,sodium:7.5,sugar:1.5,satFat:0.0},
+            {category:"蔬菜",name:"秋葵",method:"水煮",calories:45,protein:3.0,fat:0.45,carbs:9.0,fiber:4.5,sodium:12,sugar:2.25,satFat:0.15},
+            {category:"蔬菜",name:"紅蘿蔔",method:"水煮",calories:52.5,protein:1.2,fat:0.3,carbs:12.0,fiber:4.2,sodium:60,sugar:6.75,satFat:0.0},
+            {category:"蔬菜",name:"小黃瓜",method:"生食",calories:22.5,protein:1.05,fat:0.15,carbs:5.4,fiber:0.75,sodium:3,sugar:2.55,satFat:0.0},
+            {category:"蔬菜",name:"番茄",method:"生食",calories:27,protein:1.35,fat:0.3,carbs:5.85,fiber:1.8,sodium:7.5,sugar:3.9,satFat:0.0},
+            {category:"蔬菜",name:"青江菜",method:"清炒",calories:33,protein:3.0,fat:0.45,carbs:5.7,fiber:3.15,sodium:75,sugar:0.9,satFat:0.15},
+            {category:"蔬菜",name:"莧菜",method:"水煮",calories:30,protein:3.75,fat:0.6,carbs:5.25,fiber:3.45,sodium:37.5,sugar:0.75,satFat:0.15},
+            {category:"蔬菜",name:"竹筍",method:"煮湯",calories:37.5,protein:3.3,fat:0.45,carbs:6.75,fiber:3.0,sodium:22.5,sugar:1.5,satFat:0.15},
+            {category:"蔬菜",name:"金針菇",method:"煮湯",calories:33,protein:3.75,fat:0.45,carbs:6.0,fiber:4.5,sodium:15,sugar:1.5,satFat:0.15},
+            {category:"蔬菜",name:"紫菜湯",method:"煮",calories:52.5,protein:9.0,fat:0.75,carbs:7.5,fiber:6.75,sodium:750,sugar:0.75,satFat:0.15},
+            {category:"蔬菜",name:"油菜",method:"清炒",calories:36,protein:3.6,fat:0.45,carbs:5.4,fiber:3.0,sodium:60,sugar:0.6,satFat:0.15},
+            {category:"蔬菜",name:"芥藍",method:"清炒",calories:39,protein:3.9,fat:0.6,carbs:6.0,fiber:3.3,sodium:75,sugar:0.9,satFat:0.15},
+            {category:"蔬菜",name:"絲瓜",method:"清炒",calories:30,protein:1.2,fat:0.3,carbs:6.0,fiber:2.4,sodium:15,sugar:1.5,satFat:0.0},
+            {category:"蔬菜",name:"海帶",method:"煮湯",calories:18,protein:1.5,fat:0.3,carbs:4.5,fiber:3.75,sodium:300,sugar:0.75,satFat:0.0},
+            {category:"蔬菜",name:"滷海帶",method:"滷",calories:25,protein:2.0,fat:0.4,carbs:5.0,fiber:4.0,sodium:350,sugar:0.8,satFat:0.1},
+            {category:"水果",name:"芭樂",method:"生食",calories:102,protein:3.9,fat:1.5,carbs:21.0,fiber:8.1,sodium:3,sugar:13.35,satFat:0.3},
+            {category:"水果",name:"木瓜",method:"生食",calories:64.5,protein:0.75,fat:0.45,carbs:16.5,fiber:2.55,sodium:12,sugar:11.7,satFat:0.15},
+            {category:"水果",name:"番茄",method:"生食",calories:27,protein:1.35,fat:0.3,carbs:5.85,fiber:1.8,sodium:7.5,sugar:3.9,satFat:0.0},
+            {category:"水果",name:"鳳梨",method:"生食",calories:75,protein:0.75,fat:0.15,carbs:19.5,fiber:2.1,sodium:1.5,sugar:14.85,satFat:0.0},
+            {category:"水果",name:"奇異果",method:"生食",calories:91.5,protein:1.65,fat:0.75,carbs:22.05,fiber:4.5,sodium:4.5,sugar:13.5,satFat:0.15},
+            {category:"水果",name:"蘋果",method:"生食",calories:78,protein:0.45,fat:0.3,carbs:20.7,fiber:3.6,sodium:1.5,sugar:15.6,satFat:0.0},
+            {category:"水果",name:"草莓",method:"生食",calories:48,protein:1.05,fat:0.45,carbs:11.55,fiber:3.0,sodium:1.5,sugar:7.35,satFat:0.0},
+            {category:"水果",name:"葡萄柚",method:"生食",calories:63,protein:1.2,fat:0.15,carbs:15.75,fiber:2.4,sodium:0,sugar:10.35,satFat:0.0},
+            {category:"水果",name:"梨",method:"生食",calories:85.5,protein:0.6,fat:0.15,carbs:22.8,fiber:4.65,sodium:1.5,sugar:14.7,satFat:0.0},
+            {category:"湯品飲品",name:"生薑茶",method:"煮",calories:120,protein:2.7,fat:1.2,carbs:27.0,fiber:3.0,sodium:19.5,sugar:2.55,satFat:0.3},
+            {category:"湯品飲品",name:"綠豆湯",method:"煮",calories:90,protein:6.0,fat:0.3,carbs:18.0,fiber:6.0,sodium:7.5,sugar:3.0,satFat:0.15},
+            {category:"湯品飲品",name:"海帶湯",method:"煮",calories:22.5,protein:1.8,fat:0.45,carbs:5.25,fiber:4.5,sodium:225,sugar:0.75,satFat:0.0},
+            {category:"湯品飲品",name:"無糖綠茶",method:"沖泡",calories:1.5,protein:0.0,fat:0.0,carbs:0.45,fiber:0.0,sodium:3,sugar:0.0,satFat:0.0},
+            {category:"湯品飲品",name:"無糖烏龍茶",method:"沖泡",calories:1.5,protein:0.0,fat:0.0,carbs:0.45,fiber:0.0,sodium:4.5,sugar:0.0,satFat:0.0},
+            {category:"湯品飲品",name:"無糖紅茶",method:"沖泡",calories:1.5,protein:0.0,fat:0.0,carbs:0.45,fiber:0.0,sodium:3,sugar:0.0,satFat:0.0},
+            {category:"湯品飲品",name:"無糖黑咖啡",method:"沖泡",calories:1.5,protein:0.15,fat:0.0,carbs:0.3,fiber:0.0,sodium:3,sugar:0.0,satFat:0.0},
+            {category:"湯品飲品",name:"紫菜湯",method:"煮",calories:27,protein:2.25,fat:0.3,carbs:4.5,fiber:3.75,sodium:270,sugar:0.75,satFat:0.0},
+            {category:"湯品飲品",name:"木耳湯",method:"煮",calories:30,protein:1.8,fat:0.3,carbs:6.75,fiber:6.0,sodium:22.5,sugar:1.2,satFat:0.0},
+            {category:"湯品飲品",name:"薑茶",method:"煮",calories:120,protein:2.7,fat:1.2,carbs:27.0,fiber:3.0,sodium:19.5,sugar:2.55,satFat:0.3}
+          ];
+          localStorage.setItem('food-library', JSON.stringify(defaultFoods));
+          console.log('✓ 已載入內建食物庫（78項）');
+        }
+      } catch (err) {
+        console.log('食物庫初始化檢查');
+      }
+    }
+    
+    async function loadNutritionPlan() {
+      try {
+        const data = localStorage.getItem('nutrition-plan');
+        if (data) {
+          nutritionPlan = JSON.parse(data);
+          const select = document.getElementById('weekSelect');
+          select.innerHTML = nutritionPlan.map(p => 
+            `<option value="${p.week}">第 ${p.week} 週</option>`
+          ).join('');
+          currentWeek = nutritionPlan[0].week;
+        }
+      } catch (err) {
+        console.log('尚未設定計畫');
+      }
+    }
+    
+    async function loadFoodLibrary() {
+      try {
+        const data = localStorage.getItem('food-library');
+        foodLibrary = data ? JSON.parse(data) : [];
+      } catch (err) {
+        foodLibrary = [];
+      }
+    }
+    
+    async function loadTodayMeals() {
+      const today = new Date().toISOString().split('T')[0];
+      try {
+        const data = localStorage.getItem(`meals-${today}`);
+        todayMeals = data ? JSON.parse(data) : { meal1: [], meal2: [], meal3: [] };
+      } catch (err) {
+        todayMeals = { meal1: [], meal2: [], meal3: [] };
+      }
+    }
+    
+    async function saveTodayMeals() {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`meals-${today}`, JSON.stringify(todayMeals));
+    }
+    
+    // ==================== 渲染食物庫 ====================
+    function renderFoodLibrary() {
+      const container = document.getElementById('foodLibraryContainer');
+      const remaining = calculateRemaining();
+      
+      const categorized = {};
+      foodLibrary.forEach(food => {
+        if (!categorized[food.category]) {
+          categorized[food.category] = [];
+        }
+        categorized[food.category].push(food);
+      });
+      
+      const categoryOrder = ['主食', '蛋白質', '蔬菜', '水果', '堅果種子', '湯品飲品'];
+      const expandedCategories = categoryOrder.slice(0, 5); // 前5個展開
+      
+      container.innerHTML = categoryOrder.map(catName => {
+        const foods = categorized[catName] || [];
+        const cat = CATEGORIES[catName];
+        const isExpanded = expandedCategories.includes(catName);
+        
+        return `
+          <div class="category ${isExpanded ? 'expanded' : ''}" data-category="${catName}">
+            <div class="category-header" onclick="toggleCategory(this)">
+              <div>
+                <span class="category-icon">${cat.icon}</span>
+                <span class="category-title">${catName}</span>
+              </div>
+              <span class="category-toggle"></span>
+            </div>
+            <div class="category-content">
+              <div class="food-items">
+                ${foods.map(food => {
+                  const hidden = food.calories > remaining ? 'hidden' : '';
+                  const foodId = `${food.name}-${food.method}`;
+                  return `
+                    <div class="food-tag cat-${catName} ${hidden}" 
+                         draggable="${!isMobile}" 
+                         data-food-id="${foodId}"
+                         onclick="handleFoodTagClick(this, event)">
+                      <div class="food-tag-name">${food.name}</div>
+                      <div class="food-tag-calories">${food.calories} kcal</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function toggleCategory(header) {
+      header.parentElement.classList.toggle('expanded');
+    }
+    
+    // ==================== 渲染餐點 ====================
+    function renderMeals() {
+      ['meal1', 'meal2', 'meal3'].forEach(mealId => {
+        const container = document.getElementById(mealId);
+        const foods = todayMeals[mealId] || [];
+        
+        container.innerHTML = foods.map((food, index) => `
+          <div class="food-card" 
+               draggable="${!isMobile}" 
+               data-meal="${mealId}" 
+               data-index="${index}"
+               onclick="handleMealFoodClick(this, event)">
+            <div class="food-info">
+              <div class="food-name">${food.name}</div>
+              <div class="food-calories">${food.calories} kcal</div>
+            </div>
+            <button class="remove-btn" onclick="removeMealFood('${mealId}', ${index}, event)">×</button>
+          </div>
+        `).join('');
+      });
+    }
+    
+    // ==================== 計算與顯示 ====================
+    function calculateRemaining() {
+      const plan = nutritionPlan.find(p => p.week === currentWeek);
+      if (!plan) return 0;
+      
+      const total = ['meal1', 'meal2', 'meal3'].reduce((sum, mealId) => {
+        return sum + todayMeals[mealId].reduce((s, f) => s + f.calories, 0);
+      }, 0);
+      
+      return plan.calories - total;
+    }
+    
+    function updateDisplay() {
+      const plan = nutritionPlan.find(p => p.week === currentWeek);
+      if (!plan) {
+        document.getElementById('remainingCalories').textContent = '請先設定計畫';
+        document.getElementById('progressBars').innerHTML = '';
+        return;
+      }
+      
+      const totals = ['meal1', 'meal2', 'meal3'].reduce((acc, mealId) => {
+        todayMeals[mealId].forEach(food => {
+          acc.calories += food.calories;
+          acc.protein += food.protein;
+          acc.fat += food.fat;
+          acc.carbs += food.carbs;
+          acc.fiber += food.fiber;
+          acc.sodium += food.sodium;
+          acc.sugar += food.sugar;
+          acc.satFat += food.satFat;
+        });
+        return acc;
+      }, {
+        calories: 0, protein: 0, fat: 0, carbs: 0,
+        fiber: 0, sodium: 0, sugar: 0, satFat: 0
+      });
+      
+      const remaining = plan.calories - totals.calories;
+      document.getElementById('remainingCalories').textContent = 
+        `剩餘：${Math.round(remaining)} kcal`;
+      
+      const items = [
+        { label: '蛋白質', current: totals.protein, target: plan.protein, unit: 'g' },
+        { label: '脂肪', current: totals.fat, target: plan.fat, unit: 'g' },
+        { label: '碳水', current: totals.carbs, target: plan.carbs, unit: 'g' },
+        { label: '纖維', current: totals.fiber, target: plan.fiber, unit: 'g' },
+        { label: '鈉', current: totals.sodium, target: plan.sodium, unit: 'mg' },
+        { label: '糖', current: totals.sugar, target: plan.sugar, unit: 'g' },
+        { label: '飽和脂肪', current: totals.satFat, target: plan.satFat, unit: 'g' }
+      ];
+      
+      document.getElementById('progressBars').innerHTML = items.map(item => {
+        const percent = (item.current / item.target * 100).toFixed(1);
+        const overClass = percent > 100 ? 'over' : '';
+        return `
+          <div class="progress-item">
+            <div class="progress-label">
+              <span>${item.label}</span>
+              <span>${item.current.toFixed(1)} / ${item.target} ${item.unit}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill ${overClass}" style="width: ${Math.min(percent, 100)}%">
+                ${percent}%
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      renderMeals();
+      renderFoodLibrary();
+    }
+    
+    function updateWeek() {
+      currentWeek = parseInt(document.getElementById('weekSelect').value);
+      updateDisplay();
+    }
+    
+    // ==================== 底部選單 ====================
+    function showBottomSheet(title, options) {
+      document.getElementById('bottomSheetHeader').textContent = title;
+      document.getElementById('bottomSheetOptions').innerHTML = options.map(opt => 
+        `<button class="bottom-sheet-option ${opt.class || ''}" onclick="${opt.action}">${opt.label}</button>`
+      ).join('');
+      
+      document.getElementById('bottomSheetOverlay').classList.add('show');
+      setTimeout(() => {
+        document.getElementById('bottomSheet').classList.add('show');
+      }, 10);
+    }
+    
+    function hideBottomSheet() {
+      document.getElementById('bottomSheet').classList.remove('show');
+      setTimeout(() => {
+        document.getElementById('bottomSheetOverlay').classList.remove('show');
+      }, 300);
+    }
+    
+    // ==================== 手機點擊處理 ====================
+    function handleFoodTagClick(element, event) {
+      if (!isMobile) return;
+      
+      event.stopPropagation();
+      const foodId = element.dataset.foodId;
+      selectedFood = foodLibrary.find(f => `${f.name}-${f.method}` === foodId);
+      
+      if (!selectedFood) return;
+      
+      showBottomSheet(`${selectedFood.name} ${selectedFood.calories} kcal`, [
+        { label: '加入第一餐', action: 'addToMealFromSheet(1)' },
+        { label: '加入第二餐', action: 'addToMealFromSheet(2)' },
+        { label: '加入第三餐', action: 'addToMealFromSheet(3)' },
+        { label: '取消', action: 'hideBottomSheet()', class: 'cancel' }
+      ]);
+    }
+    
+    function handleMealFoodClick(element, event) {
+      if (!isMobile) return;
+      if (event.target.classList.contains('remove-btn')) return;
+      
+      event.stopPropagation();
+      const mealId = element.dataset.meal;
+      const index = parseInt(element.dataset.index);
+      selectedMealFood = { mealId, index };
+      
+      const food = todayMeals[mealId][index];
+      
+      showBottomSheet(`${food.name} ${food.calories} kcal`, [
+        { label: '移至第一餐', action: 'moveToMealFromSheet(1)' },
+        { label: '移至第二餐', action: 'moveToMealFromSheet(2)' },
+        { label: '移至第三餐', action: 'moveToMealFromSheet(3)' },
+        { label: '刪除', action: 'deleteMealFoodFromSheet()', class: 'delete' },
+        { label: '取消', action: 'hideBottomSheet()', class: 'cancel' }
+      ]);
+    }
+    
+    async function addToMealFromSheet(mealNum) {
+      if (!selectedFood) return;
+      
+      const mealId = `meal${mealNum}`;
+      todayMeals[mealId].push({ ...selectedFood });
+      await saveTodayMeals();
+      updateDisplay();
+      hideBottomSheet();
+    }
+    
+    async function moveToMealFromSheet(mealNum) {
+      if (!selectedMealFood) return;
+      
+      const { mealId: fromMeal, index } = selectedMealFood;
+      const toMeal = `meal${mealNum}`;
+      
+      if (fromMeal === toMeal) {
+        hideBottomSheet();
+        return;
+      }
+      
+      const food = todayMeals[fromMeal][index];
+      todayMeals[fromMeal].splice(index, 1);
+      todayMeals[toMeal].push(food);
+      
+      await saveTodayMeals();
+      updateDisplay();
+      hideBottomSheet();
+    }
+    
+    async function deleteMealFoodFromSheet() {
+      if (!selectedMealFood) return;
+      
+      const { mealId, index } = selectedMealFood;
+      todayMeals[mealId].splice(index, 1);
+      
+      await saveTodayMeals();
+      updateDisplay();
+      hideBottomSheet();
+    }
+    
+    async function removeMealFood(mealId, index, event) {
+      event.stopPropagation();
+      todayMeals[mealId].splice(index, 1);
+      await saveTodayMeals();
+      updateDisplay();
+    }
+    
+    // ==================== 拖曳處理 (桌面版) ====================
+    function setupDragDrop() {
+      if (isMobile) return;
+      
+      // 食物標籤拖曳
+      document.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('food-tag')) {
+          const foodId = e.target.dataset.foodId;
+          e.dataTransfer.setData('foodId', foodId);
+          e.target.classList.add('dragging');
+        } else if (e.target.classList.contains('food-card')) {
+          const mealId = e.target.dataset.meal;
+          const index = e.target.dataset.index;
+          e.dataTransfer.setData('mealId', mealId);
+          e.dataTransfer.setData('mealIndex', index);
+          e.target.classList.add('dragging');
+        }
+      });
+      
+      document.addEventListener('dragend', (e) => {
+        e.target.classList.remove('dragging');
+      });
+      
+      // 餐欄 Drop zone
+      document.querySelectorAll('.meal-column').forEach(column => {
+        column.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          column.classList.add('drag-over');
+        });
+        
+        column.addEventListener('dragleave', () => {
+          column.classList.remove('drag-over');
+        });
+        
+        column.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          column.classList.remove('drag-over');
+          
+          const targetMeal = column.dataset.meal;
+          const mealId = `meal${targetMeal}`;
+          
+          const foodId = e.dataTransfer.getData('foodId');
+          const fromMealId = e.dataTransfer.getData('mealId');
+          const fromIndex = e.dataTransfer.getData('mealIndex');
+          
+          if (foodId) {
+            // 從食物庫新增
+            const food = foodLibrary.find(f => `${f.name}-${f.method}` === foodId);
+            if (food) {
+              todayMeals[mealId].push({ ...food });
+              await saveTodayMeals();
+              updateDisplay();
+            }
+          } else if (fromMealId) {
+            // 餐間移動
+            if (fromMealId !== mealId) {
+              const food = todayMeals[fromMealId][parseInt(fromIndex)];
+              todayMeals[fromMealId].splice(parseInt(fromIndex), 1);
+              todayMeals[mealId].push(food);
+              await saveTodayMeals();
+              updateDisplay();
+            }
+          }
+        });
+      });
+    }
+    
+    // ==================== 計畫設定 ====================
+    function parseCSV(text) {
+      return text.trim().split('\n').map(line => 
+        line.split(',').map(cell => cell.trim())
+      );
+    }
+    
+    function validatePlan(rows) {
+      const errors = [];
+      const weekSet = new Set();
+      
+      rows.forEach((row, index) => {
+        const lineNum = index + 1;
+        
+        if (row.length !== 9) {
+          errors.push(`第 ${lineNum} 行：欄位數量錯誤（應為 9 欄，實際 ${row.length} 欄）`);
+          return;
+        }
+        
+        const week = parseInt(row[0]);
+        if (isNaN(week) || week <= 0) {
+          errors.push(`第 ${lineNum} 行：週數格式錯誤（${row[0]}）`);
+          return;
+        }
+        
+        if (weekSet.has(week)) {
+          errors.push(`第 ${lineNum} 行：週數 ${week} 重複`);
+        }
+        weekSet.add(week);
+        
+        const fields = ['熱量', '蛋白質', '脂肪', '碳水', '纖維', '鈉', '糖', '飽和脂肪'];
+        for (let i = 1; i < row.length; i++) {
+          const value = parseFloat(row[i]);
+          if (isNaN(value) || value < 0) {
+            errors.push(`第 ${lineNum} 行：${fields[i-1]} 格式錯誤（${row[i]}）`);
+          }
+        }
+      });
+      
+      return errors;
+    }
+    
+    async function savePlanDirect() {
+      const input = document.getElementById('planInput').value;
+      const errorDiv = document.getElementById('planError');
+      const successDiv = document.getElementById('planSuccess');
+      
+      errorDiv.classList.remove('show');
+      successDiv.classList.remove('show');
+      
+      if (!input.trim()) {
+        errorDiv.textContent = '請輸入資料';
+        errorDiv.classList.add('show');
+        return;
+      }
+      
+      const rows = parseCSV(input);
+      const errors = validatePlan(rows);
+      
+      if (errors.length > 0) {
+        errorDiv.innerHTML = errors.join('<br>');
+        errorDiv.classList.add('show');
+        return;
+      }
+      
+      const planData = rows.map(row => ({
+        week: parseInt(row[0]),
+        calories: parseFloat(row[1]),
+        protein: parseFloat(row[2]),
+        fat: parseFloat(row[3]),
+        carbs: parseFloat(row[4]),
+        fiber: parseFloat(row[5]),
+        sodium: parseFloat(row[6]),
+        sugar: parseFloat(row[7]),
+        satFat: parseFloat(row[8])
+      }));
+      
+      planData.sort((a, b) => a.week - b.week);
+      
+      try {
+        localStorage.setItem('nutrition-plan', JSON.stringify(planData));
+        
+        successDiv.textContent = `✓ 成功儲存 ${planData.length} 週計畫`;
+        successDiv.classList.add('show');
+        
+        setTimeout(() => {
+          showPage('mainPage');
+        }, 1000);
+      } catch (err) {
+        errorDiv.textContent = '儲存失敗：' + err.message;
+        errorDiv.classList.add('show');
+      }
+    }
+    
+    // ==================== 食物庫設定 ====================
+    function validateFood(rows) {
+      const errors = [];
+      const validCategories = Object.keys(CATEGORIES);
+      
+      rows.forEach((row, index) => {
+        const lineNum = index + 1;
+        
+        if (row.length !== 11) {
+          errors.push(`第 ${lineNum} 行：欄位數量錯誤（應為 11 欄，實際 ${row.length} 欄）`);
+          return;
+        }
+        
+        if (!validCategories.includes(row[0])) {
+          errors.push(`第 ${lineNum} 行：分類錯誤（${row[0]}），應為：${validCategories.join('、')}`);
+          return;
+        }
+        
+        if (!row[1] || !row[2]) {
+          errors.push(`第 ${lineNum} 行：名稱或烹煮方式不可為空`);
+          return;
+        }
+        
+        const fields = ['熱量', '蛋白質', '脂肪', '碳水', '纖維', '鈉', '糖', '飽和脂肪'];
+        for (let i = 3; i < row.length; i++) {
+          const value = parseFloat(row[i]);
+          if (isNaN(value) || value < 0) {
+            errors.push(`第 ${lineNum} 行：${fields[i-3]} 格式錯誤（${row[i]}）`);
+          }
+        }
+      });
+      
+      return errors;
+    }
+    
+    async function saveFoodDirect() {
+      const input = document.getElementById('foodInput').value;
+      const errorDiv = document.getElementById('foodError');
+      const successDiv = document.getElementById('foodSuccess');
+      
+      errorDiv.classList.remove('show');
+      successDiv.classList.remove('show');
+      
+      if (!input.trim()) {
+        errorDiv.textContent = '請輸入資料';
+        errorDiv.classList.add('show');
+        return;
+      }
+      
+      const rows = parseCSV(input);
+      const errors = validateFood(rows);
+      
+      if (errors.length > 0) {
+        errorDiv.innerHTML = errors.join('<br>');
+        errorDiv.classList.add('show');
+        return;
+      }
+      
+      const foodData = rows.map(row => ({
+        category: row[0],
+        name: row[1],
+        method: row[2],
+        calories: parseFloat(row[3]),
+        protein: parseFloat(row[4]),
+        fat: parseFloat(row[5]),
+        carbs: parseFloat(row[6]),
+        fiber: parseFloat(row[7]),
+        sodium: parseFloat(row[8]),
+        sugar: parseFloat(row[9]),
+        satFat: parseFloat(row[10])
+      }));
+      
+      try {
+        localStorage.setItem('food-library', JSON.stringify(foodData));
+        
+        successDiv.textContent = `✓ 成功儲存 ${foodData.length} 項食物`;
+        successDiv.classList.add('show');
+        
+        setTimeout(() => {
+          showPage('mainPage');
+        }, 1000);
+      } catch (err) {
+        errorDiv.textContent = '儲存失敗：' + err.message;
+        errorDiv.classList.add('show');
+      }
+    }
+    
+    // ==================== 啟動 ====================
+    init();
+  </script>
+</body>
+</html>
